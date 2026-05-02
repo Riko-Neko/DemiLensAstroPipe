@@ -1,0 +1,69 @@
+---
+flags:
+  model_rebuild: false
+  dataset_rebuild: false
+  params_update: false
+path:
+  config_dir: ./config
+  data_dir_train: [/data/ssd0/lirui/lens_search/lens_sim/lens_sim_realgal_poisson/simulation/multibands/sys/, /data/ssd0/lirui/KIDS/galaxy_neg/multibands/]
+  data_dir_test: [/data/ssd0/lirui/lens_search/lens_sim/lens_sim_realgal_poisson/simulation/multibands/sys/, /data/ssd0/lirui/KIDS/galaxy_neg/multibands/]
+  pos_dir_train: null
+  neg_dir_train: null
+  train_csv: ./data/train.csv
+  pos_dir_test: null
+  neg_dir_test: null
+  test_csv: ./data/test.csv
+  data_dir_pred: null
+  pred_csv: ./data/pred.csv
+  pred_output_dir: null
+  test_output_dir: ./result/csv
+  plot_output_dir: ./result/fig
+  weights_dir: ./weights
+  checkpoint_dir: ./checkpoints
+  log_dir: ./logs
+data:
+  input_channels: 3
+  image_size: 96
+  num_workers: 10
+  num_samples: null
+  num_val_samples: 40000
+  augment_mode: full
+  color_jitter: false
+  add_noise: false
+  adaptation_mode: padding
+  channel_expansion_mode: null
+  mix_channels: false
+  csv_samples_catalog_reader: sample
+  norm: false
+  update_mean_std: false
+  mean: null
+  std: null
+train:
+  optimizer: AdamW
+  loss_function: BCEWithLogitsLoss
+  scheduler:
+    class: CosineAnnealingLR
+    T_max: 30
+    eta_min: 1.0e-11
+    warmup_enabled: true
+    warmup_steps: 10
+  learning_rate: 0.0005
+  batch_size: 128
+  num_epochs: 1000
+  weight_decay: 1.0e-05
+  save_interval: 1
+  self_evaluate_interval: 5
+  process_bar:
+    enabled: true
+    train:
+      colour: red
+      desc: Training
+    evaluate:
+      colour: blue
+      desc: Evaluating
+    self-evaluate:
+      colour: yellow
+      desc: Self-evaluating
+model:
+  model_name: '# add model here'
+  model_params: '# add model parameters here'
