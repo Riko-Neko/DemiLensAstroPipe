@@ -242,7 +242,7 @@ These templates provide the starting parameter block used by `python config.py -
 
 ### Paper
 
-- [Strong lensing in KIDS II: DemiLensNet\textemdash Low False Positive Strong Gravitational Lens Discovery in Wide-Field Surveys](https://example.com/demilensnet-paper)
+- [Strong lensing in KIDS II: DemiLensNet — Low False Positive Strong Gravitational Lens Discovery in Wide-Field Surveys](https://example.com/demilensnet-paper)
 
 ### License
 
