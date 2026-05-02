@@ -2,127 +2,190 @@
 
 A user-oriented, highly interactive PyTorch deep learning pipeline based on `YAML` configuration. With preset astronomy-optimized models, it can be adapted to a wide range of `FITS`/`PNG` classification tasks for task-specific data. In this repository, gravitational lens binary classification with `DemiLensNet` is the concrete task adaptation built on top of the pipeline.
 
-The pipeline supports:
+- supports `FITS` and `PNG` inputs
+- supports directory-based datasets and `CSV`-indexed datasets
+- supports training, evaluation, plotting, and offline prediction
+- supports interactive configuration creation
+- supports astronomy-oriented preset model templates for single-band and multi-band tasks
 
-- `FITS` and `PNG` inputs
-- directory-based datasets and `CSV`-indexed datasets
-- training, evaluation, plotting, and offline prediction
-- interactive configuration creation
-- interactive training script generation
-- astronomy-oriented model presets that can be adapted to single-band or multi-band classification tasks
+## Configuration Layer: `config.py`
 
-## Configuration and Workflow
+The configuration layer is implemented in [`config.py`](config.py). Its purpose is to define, validate, repair, and interpret the task configuration before training or inference starts.
 
-### The Three-Layer Entry Structure
+At this layer, the project treats configuration as an abstract schema rather than a fixed experiment file. The key pieces are:
 
-The project is easiest to use if you read it as three layers:
+- the default schema in [`config/default.yaml`](config/default.yaml)
+- the preset model parameter library in `MODEL_PARAMS_MAP`
+- the training component registries in `LOSS_MAP`, `OPTIMIZER_MAP`, and `SCHEDULER_MAP`
+- the runtime configuration manager `ModelSettings`
 
-1. `config.py`: configuration initialization, update, and repair
-2. `main.py`: training script generation and initial run behavior
-3. user-generated execution scripts: run-level parameter wrappers created from `main.py`
+### What `config.py` does
 
-This is the intended usage model of the project. The first two layers are the pipeline itself; the third layer is a user-produced execution wrapper derived from those layers.
+`config.py` is responsible for:
 
-### Layer 1: `config.py`
+- ensuring that the default config schema exists and remains structurally valid
+- generating a new task config interactively
+- repairing an existing config when fields are missing or outdated
+- loading the active config into `ModelSettings`
+- parsing model-related strings into actual Python objects
+- checking and applying supported config updates during training
 
-File: [config.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/config.py)
-
-`config.py` manages the configuration layer itself. It is responsible for creating, validating, repairing, and interpreting `YAML` configs before a training or inference run begins.
-
-Its role can be summarized as:
-
-- ensure that `default.yaml` exists and remains structurally valid
-- generate a new config interactively
-- repair an existing config so it matches the expected schema
-- load runtime configuration into `ModelSettings`
-- parse model-related objects from strings into actual Python classes
-- detect and apply certain config updates during training
-
-#### What “preset configuration” means in this project
-
-In the first part of this README, “preset configuration” should be understood as an abstract configuration mechanism, not as a specific experiment file under `config/`.
-
-The preset layer consists of:
-
-- a structural template: [config/default.yaml](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/config/default.yaml)
-- built-in model parameter templates in `config.py` through `MODEL_PARAMS_MAP`
-- built-in training component registries such as `LOSS_MAP`, `OPTIMIZER_MAP`, and `SCHEDULER_MAP`
-
-In other words, the project does not require users to start from a fixed experiment YAML. Instead, it expects them to start from a default schema and then specialize that schema through model templates and task-specific values.
-
-#### `config.py` commands
+### Main `config.py` commands
 
 ```bash
 python config.py -g
 python config.py -r config/your_config.yaml
 ```
 
-`python config.py -g` creates a new config interactively. You provide a config name and a `model_name`; if that model exists in the built-in model template library, the script injects a matching `model_params` block automatically.
+`python config.py -g`
 
-`python config.py -r <CONFIG_PATH>` repairs an existing config. This is useful when the config structure is outdated or incomplete. Missing keys are restored from the default schema, while extra keys are reported for manual review.
+- creates a new config interactively
+- asks for a config name
+- asks for a `model_name`
+- if the model name exists in the preset model library, automatically injects a matching `model_params` template
 
-#### `default.yaml` as the reference schema
+`python config.py -r <CONFIG_PATH>`
 
-File: [config/default.yaml](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/config/default.yaml)
+- repairs an existing config against the default schema
+- restores missing keys from the default structure
+- reports extra keys for manual review
 
-`default.yaml` is best treated as the canonical schema of the pipeline. It is not primarily a ready-to-run experiment file. Its job is to define the expected structure and default behavior of the configuration tree.
+### Using `default.yaml` as the reference example
+
+[`config/default.yaml`](config/default.yaml) should be read as the reference schema of the pipeline. It is not primarily a ready-to-run experiment. Its job is to define the expected structure of a valid task config.
 
 The file is organized into five sections:
 
-- `flags`: runtime update flags such as `model_rebuild`, `dataset_rebuild`, and `params_update`
-- `path`: data sources and output locations
-- `data`: input shape, augmentation, normalization, and loading behavior
-- `train`: optimizer, loss, scheduler, learning rate, batch size, and logging behavior
-- `model`: `model_name` and `model_params`
+- `flags`
+- `path`
+- `data`
+- `train`
+- `model`
 
-#### How to read `default.yaml`
+#### `flags`
 
-`flags`
+This block controls runtime update behavior.
 
-- Controls whether certain classes of changes can be applied during training.
-- In normal usage, users usually leave these alone unless they explicitly use runtime config updates.
+- `model_rebuild`
+- `dataset_rebuild`
+- `params_update`
 
-`path`
+In normal usage, these fields are usually left unchanged unless runtime configuration update behavior is intentionally used.
 
-- Defines where the training, testing, and prediction data live.
-- Defines where weights, checkpoints, logs, CSV outputs, figures, and predictions are written.
-- This is usually the first block that must be edited when adapting the project to a new dataset.
+#### `path`
 
-`data`
+This block defines where the pipeline reads data and writes outputs.
 
-- Defines the input channel count, image size, augmentation mode, normalization behavior, and related preprocessing choices.
-- This block is where users adapt the pipeline to single-band versus multi-band data, and to different image sizes.
+Typical fields include:
 
-`train`
+- training and test data locations
+- positive and negative sample directories
+- `CSV` index paths
+- prediction output directory
+- test output directory
+- plot output directory
+- weights directory
+- checkpoint directory
+- log directory
 
-- Defines the optimization strategy and training schedule.
-- This includes the optimizer, loss function, scheduler, learning rate, batch size, epoch count, checkpoint frequency, and progress bar behavior.
+When adapting the project to a new dataset, this is usually the first block to edit.
 
-`model`
+#### `data`
 
-- Defines the model entry point through `model_name`.
-- Defines the model constructor arguments through `model_params`.
-- This is the final block that turns the default schema into a trainable task definition.
+This block defines how image tensors are built.
 
-#### Runtime configuration behavior
+Typical fields include:
 
-`ModelSettings` is the central runtime configuration object. It loads the active `YAML`, selects the device, stores the parsed configuration tree, and exposes sub-configs such as `path`, `data`, `train`, and `model`.
+- `input_channels`
+- `image_size`
+- `augment_mode`
+- `adaptation_mode`
+- `channel_expansion_mode`
+- `norm`
+- `mean`
+- `std`
 
-During training, `setup_training()` can compare the in-memory config with the version on disk and apply updates according to the project’s own rules:
+This is where the pipeline is adapted to single-band versus multi-band data, to different image sizes, and to different augmentation strategies.
+
+#### `train`
+
+This block defines the optimization and training schedule.
+
+Typical fields include:
+
+- `optimizer`
+- `loss_function`
+- `scheduler`
+- `learning_rate`
+- `batch_size`
+- `num_epochs`
+- `weight_decay`
+- `save_interval`
+- `self_evaluate_interval`
+- `process_bar`
+
+This is where learning rate, optimizer choice, batch size, epoch count, and training behavior are controlled.
+
+#### `model`
+
+This block defines the model itself through:
+
+- `model_name`
+- `model_params`
+
+This is the block that turns the default schema into a concrete trainable task.
+
+### Example reading of `default.yaml`
+
+A typical use pattern is:
+
+1. Start from the default schema.
+2. Choose a model through `model_name`.
+3. Accept or edit the injected `model_params`.
+4. fill in `path` for the target dataset.
+5. adjust `data` for channel count, image size, and augmentation.
+6. adjust `train` for optimization strategy.
+
+A minimal model block can look like this:
+
+```yaml
+model:
+  model_name: demilensnet
+  model_params:
+    in_ch: 3
+    out_ch: 1
+    dim: 32
+    ori_h: 144
+    extra_fc: true
+    ablated: [false, false]
+    e_factor: [2, 4, 8, 16]
+    visualize: false
+```
+
+This should be understood only as an example of how the schema is used, not as the only recommended task definition.
+
+### Runtime behavior of the configuration layer
+
+`ModelSettings` is the central runtime configuration object. It:
+
+- loads the active `YAML`
+- selects the device
+- stores the parsed configuration tree
+- exposes the `path`, `data`, `train`, and `model` sub-configs
+
+During training, `setup_training()` can compare the in-memory config with the version on disk and apply supported updates in three categories:
 
 - normal parameter updates
 - dataset rebuild updates
 - model rebuild updates
 
-This makes the project more interactive than a typical static training script.
+This is one of the reasons the pipeline is more interactive than a typical static training script.
 
-### Layer 2: `main.py`
+## Main Workflow: `main.py`
 
-File: [main.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/main.py)
+The main workflow entry is implemented in [`main.py`](main.py). Its role is to turn a task configuration into an executable training, testing, plotting, or prediction process.
 
-`main.py` is not the model definition layer and not the dataset definition layer. Its job is to transform a configuration into a concrete run plan and, when requested, produce a user-side execution wrapper for repeated runs.
-
-It provides the following user-facing entry points:
+### Main `main.py` entry points
 
 ```bash
 python main.py -g
@@ -135,12 +198,16 @@ python main.py -P 0.45 0.60
 
 Their roles are:
 
-- `-g`: generate a dedicated execution script interactively
+- `-g`: interactively define the initial run behavior and generate a reusable execution script
 - `-t`: test one or more trained configs
 - `-p`: plot test results
-- `-P`: run prediction with optional thresholds
+- `-P`: run prediction with optional threshold values
 
-When used in generation mode, `main.py` asks for the initial execution behavior of the workflow. This includes whether to:
+### What `main.py` controls
+
+`main.py` does not define the model family or the dataset schema. Instead, it controls how a configured task is started.
+
+In generation mode, it asks whether to:
 
 - choose a device index
 - print detailed device information
@@ -155,30 +222,14 @@ When used in generation mode, `main.py` asks for the initial execution behavior 
 - run final testing
 - run result analysis
 
-This layer defines how the workflow starts, not what the task fundamentally is.
+This means:
 
-### Layer 3: User-Generated Execution Script Layer
+- `config.py` defines the task
+- `main.py` defines the execution behavior of that task
 
-The third layer is the execution script produced by `python main.py -g`. This script is generated from user choices and belongs to the usage layer of the project, not to the core pipeline definition.
+### Workflow stages
 
-Its purpose is to freeze the chosen startup behavior into a reusable run entry point. This makes repeated experiments simpler and more reproducible without changing the underlying pipeline code.
-
-This script typically exposes only a small runtime surface:
-
-- `-l` / `--load`: force `revise_accuracy=True` and `use_saved_weights=True`
-- `-d` / `--device`: override the default device index stored in the script
-
-This is the third layer of the system:
-
-- `config.py` defines the task structure
-- `main.py` defines the initial execution choices
-- the generated execution script applies those choices repeatedly at run time
-
-### Main Workflow Behavior
-
-File: [workflow.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/workflow.py)
-
-The project’s runtime behavior is assembled as a workflow of named stages:
+The actual runtime stages are assembled in [`workflow.py`](workflow.py):
 
 1. `Init Config`
 2. `Set Device`
@@ -190,30 +241,28 @@ The project’s runtime behavior is assembled as a workflow of named stages:
 8. `Analyze Results`
 9. `Model Prediction`
 
-These stages map to the core code files:
+These stages connect the core files of the repository:
 
-- data loading and augmentation: [augment.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/augment.py)
-- training and evaluation: [train.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/train.py)
-- test-time statistics and ROC export: [test.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/test.py)
-- prediction and threshold-based file export: [pred.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/pred.py)
-- plotting and post-test visualization: [plot.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/plot.py)
-- builders, checkpoints, and logging: [utils.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/utils.py)
+- data loading and augmentation: [`augment.py`](augment.py)
+- training and validation: [`train.py`](train.py)
+- test-time metrics and ROC export: [`test.py`](test.py)
+- threshold-based prediction export: [`pred.py`](pred.py)
+- plotting and post-test visualization: [`plot.py`](plot.py)
+- builders, checkpoints, and logging: [`utils.py`](utils.py)
 
-### Input and Output Conventions
+### Input modes
 
-#### Inputs
-
-The data layer supports two common modes:
+The workflow supports two main input modes:
 
 - directory mode, where positive and negative samples are provided as folders
 - `CSV` mode, where the sample list and labels are defined in a table
 
-Supported image formats are:
+Supported formats are:
 
 - `FITS`
 - `PNG`
 
-The final tensor shape and preprocessing behavior are controlled by the config, especially:
+The final tensor behavior is mainly controlled by:
 
 - `data.input_channels`
 - `data.image_size`
@@ -221,7 +270,7 @@ The final tensor shape and preprocessing behavior are controlled by the config, 
 - `data.adaptation_mode`
 - `data.norm`
 
-#### Outputs
+### Output artifacts
 
 The workflow writes artifacts to the configured output directories, typically including:
 
@@ -232,48 +281,25 @@ The workflow writes artifacts to the configured output directories, typically in
 - probability CSV files
 - ROC CSV files
 - plotted figures
-- prediction output folders split by threshold outcome
+- prediction output folders split by threshold result
 
-### Basic User Flow
+### Recommended user flow
 
-For a normal task, the expected flow is:
+For a normal task, the recommended order is:
 
-1. Create or repair a config with `config.py`
-2. Edit the config so `path`, `data`, `train`, and `model` match the task
-3. Generate a dedicated training script with `main.py -g`
-4. Train with the user-generated execution script
-5. Test, plot, or predict with `main.py`
-
-This is the intended user-facing path through the pipeline.
-
-### Environment Notes
-
-The repository does not currently provide a single dependency manifest in the root. Based on the imports used by the codebase, a working environment typically needs:
-
-- `torch`
-- `torchvision`
-- `torchmetrics`
-- `torchinfo`
-- `pyyaml`
-- `pandas`
-- `matplotlib`
-- `Pillow`
-- `astropy`
-- `scipy`
-- `einops`
-- `tqdm`
-- `tabulate`
-- `lion-pytorch`
-
-For GPU usage, a valid CUDA environment and `nvidia-smi` are recommended.
+1. create or repair a config with `config.py`
+2. edit the config so `path`, `data`, `train`, and `model` match the target task
+3. use `main.py` to define the run behavior
+4. train the model
+5. test, plot, or predict through the provided workflow entry points
 
 ## DemiLensNet and the Model Library
 
 ### DemiLensNet
 
-File: [model/DemiLensNet.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/model/DemiLensNet.py)
+The implementation of the model is in [`model/DemiLensNet.py`](model/DemiLensNet.py).
 
-`DemiLensNet` is the project’s dedicated gravitational lens classification model. It is designed for astronomical image recognition scenarios where the target signal can be weak, morphologically subtle, and distributed across multiple spatial scales.
+`DemiLensNet` is the dedicated gravitational lens classification model in this repository. It is designed for astronomical image recognition scenarios where the target signal can be weak, morphologically subtle, and distributed across multiple spatial scales.
 
 At a high level, the model combines convolutional feature extraction with attention-driven feature refinement. In practical terms, its design emphasizes:
 
@@ -307,7 +333,7 @@ In practice:
 
 ### Model Library Exposed by `config.py`
 
-The model registry is defined in [config.py](/Users/rikoneko/Documents/Projects/KiDS Lens Search/MAIN/config.py).
+The model registry is defined in [`config.py`](config.py).
 
 #### Project-specific models
 
@@ -363,7 +389,7 @@ The model registry is defined in [config.py](/Users/rikoneko/Documents/Projects/
 
 ### Preset Model Parameter Templates
 
-Besides the model registry, `config.py` also exposes a preset template library through `MODEL_PARAMS_MAP`. This is the abstract “preset configuration” layer for model construction.
+Besides the model registry, `config.py` also exposes a preset template library through `MODEL_PARAMS_MAP`.
 
 Templates are currently provided for:
 
