@@ -189,27 +189,7 @@ Key characteristics:
 - deformable attention-style spatial masking
 - support for single-band and multi-band inputs
 
-### Main parameters
-
-The main `DemiLensNet` parameters exposed through `model_params` are:
-
-- `in_ch`
-- `out_ch`
-- `dim`
-- `ori_h`
-- `extra_fc`
-- `e_factor`
-- `ablated`
-- `visualize`
-
-Typical adaptation rules:
-
-- change `in_ch` for single-band or multi-band data
-- keep `ori_h` aligned with `data.image_size`
-- scale `dim` and `e_factor` for model capacity
-- use `ablated` for controlled ablation variants
-
-### Model library in `config.py`
+### Model library
 
 Project-specific models:
 
@@ -262,7 +242,7 @@ These templates provide the starting parameter block used by `python config.py -
 
 ### Paper
 
-- [DemiLensNet](https://example.com/demilensnet-paper)
+- [Strong lensing in KIDS II: DemiLensNet\textemdash Low False Positive Strong Gravitational Lens Discovery in Wide-Field Surveys](https://example.com/demilensnet-paper)
 
 ### License
 
