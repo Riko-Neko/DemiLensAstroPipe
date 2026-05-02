@@ -1,36 +1,25 @@
 # Astronomical FITS/PNG Classification Pipeline
 
-A user-oriented, highly interactive PyTorch deep learning pipeline based on `YAML` configuration. With preset astronomy-optimized models, it can be adapted to a wide range of `FITS`/`PNG` classification tasks for task-specific data. In this repository, gravitational lens binary classification with `DemiLensNet` is the concrete task adaptation built on top of the pipeline.
+A user-oriented, highly interactive PyTorch deep learning pipeline based on `YAML` configuration. With preset astronomy-optimized models, it can be adapted to `FITS`/`PNG` classification tasks on task-specific data. In this repository, gravitational lens binary classification with `DemiLensNet` is the concrete task adaptation.
 
 - supports `FITS` and `PNG` inputs
 - supports directory-based datasets and `CSV`-indexed datasets
 - supports training, evaluation, plotting, and offline prediction
-- supports interactive configuration creation
+- supports interactive configuration creation and run setup
 - supports astronomy-oriented preset model templates for single-band and multi-band tasks
 
 ## Configuration Layer: `config.py`
 
-The configuration layer is implemented in [`config.py`](config.py). Its purpose is to define, validate, repair, and interpret the task configuration before training or inference starts.
+The configuration layer is implemented in [`config.py`](config.py). It manages the task schema, model templates, runtime config loading, and config repair.
 
-At this layer, the project treats configuration as an abstract schema rather than a fixed experiment file. The key pieces are:
+Core pieces:
 
-- the default schema in [`config/default.yaml`](config/default.yaml)
-- the preset model parameter library in `MODEL_PARAMS_MAP`
-- the training component registries in `LOSS_MAP`, `OPTIMIZER_MAP`, and `SCHEDULER_MAP`
-- the runtime configuration manager `ModelSettings`
+- [`config/default.yaml`](config/default.yaml): default schema
+- `MODEL_PARAMS_MAP`: preset model parameter templates
+- `LOSS_MAP`, `OPTIMIZER_MAP`, `SCHEDULER_MAP`: training component registries
+- `ModelSettings`: runtime configuration manager
 
-### What `config.py` does
-
-`config.py` is responsible for:
-
-- ensuring that the default config schema exists and remains structurally valid
-- generating a new task config interactively
-- repairing an existing config when fields are missing or outdated
-- loading the active config into `ModelSettings`
-- parsing model-related strings into actual Python objects
-- checking and applying supported config updates during training
-
-### Main `config.py` commands
+### Main commands
 
 ```bash
 python config.py -g
@@ -39,114 +28,35 @@ python config.py -r config/your_config.yaml
 
 `python config.py -g`
 
-- creates a new config interactively
+- creates a new task config interactively
 - asks for a config name
 - asks for a `model_name`
-- if the model name exists in the preset model library, automatically injects a matching `model_params` template
+- injects preset `model_params` when the selected model exists in `MODEL_PARAMS_MAP`
 
 `python config.py -r <CONFIG_PATH>`
 
 - repairs an existing config against the default schema
-- restores missing keys from the default structure
-- reports extra keys for manual review
+- restores missing keys
+- reports extra keys for manual cleanup
 
-### Using `default.yaml` as the reference example
+### `default.yaml` as the reference example
 
-[`config/default.yaml`](config/default.yaml) should be read as the reference schema of the pipeline. It is not primarily a ready-to-run experiment. Its job is to define the expected structure of a valid task config.
+[`config/default.yaml`](config/default.yaml) defines the standard structure of a task config. It is organized into five blocks:
 
-The file is organized into five sections:
+- `flags`: runtime update control
+- `path`: dataset and output locations
+- `data`: input channels, image size, augmentation, normalization
+- `train`: optimizer, loss, scheduler, learning rate, batch size, epochs
+- `model`: `model_name` and `model_params`
 
-- `flags`
-- `path`
-- `data`
-- `train`
-- `model`
+Practical reading of the schema:
 
-#### `flags`
+- edit `path` to point to the target dataset and output directories
+- edit `data` to match band count, input size, and preprocessing strategy
+- edit `train` to match the optimization schedule
+- set `model_name` and refine `model_params`
 
-This block controls runtime update behavior.
-
-- `model_rebuild`
-- `dataset_rebuild`
-- `params_update`
-
-In normal usage, these fields are usually left unchanged unless runtime configuration update behavior is intentionally used.
-
-#### `path`
-
-This block defines where the pipeline reads data and writes outputs.
-
-Typical fields include:
-
-- training and test data locations
-- positive and negative sample directories
-- `CSV` index paths
-- prediction output directory
-- test output directory
-- plot output directory
-- weights directory
-- checkpoint directory
-- log directory
-
-When adapting the project to a new dataset, this is usually the first block to edit.
-
-#### `data`
-
-This block defines how image tensors are built.
-
-Typical fields include:
-
-- `input_channels`
-- `image_size`
-- `augment_mode`
-- `adaptation_mode`
-- `channel_expansion_mode`
-- `norm`
-- `mean`
-- `std`
-
-This is where the pipeline is adapted to single-band versus multi-band data, to different image sizes, and to different augmentation strategies.
-
-#### `train`
-
-This block defines the optimization and training schedule.
-
-Typical fields include:
-
-- `optimizer`
-- `loss_function`
-- `scheduler`
-- `learning_rate`
-- `batch_size`
-- `num_epochs`
-- `weight_decay`
-- `save_interval`
-- `self_evaluate_interval`
-- `process_bar`
-
-This is where learning rate, optimizer choice, batch size, epoch count, and training behavior are controlled.
-
-#### `model`
-
-This block defines the model itself through:
-
-- `model_name`
-- `model_params`
-
-This is the block that turns the default schema into a concrete trainable task.
-
-### Example reading of `default.yaml`
-
-A typical use pattern is:
-
-1. Start from the default schema.
-2. Choose a model through `model_name`.
-3. Accept or edit the injected `model_params`.
-4. fill in `path` for the target dataset.
-5. adjust `data` for channel count, image size, and augmentation.
-6. adjust `train` for optimization strategy.
-
-A minimal model block can look like this:
+Example model block:
 
 ```yaml
 model:
@@ -162,30 +72,21 @@ model:
     visualize: false
 ```
 
-This should be understood only as an example of how the schema is used, not as the only recommended task definition.
+### Runtime configuration behavior
 
-### Runtime behavior of the configuration layer
+`ModelSettings` loads the active `YAML`, selects the device, stores the parsed config tree, and exposes the `path`, `data`, `train`, and `model` sub-configs.
 
-`ModelSettings` is the central runtime configuration object. It:
-
-- loads the active `YAML`
-- selects the device
-- stores the parsed configuration tree
-- exposes the `path`, `data`, `train`, and `model` sub-configs
-
-During training, `setup_training()` can compare the in-memory config with the version on disk and apply supported updates in three categories:
+During training, `setup_training()` can detect changes on disk and apply supported updates in three categories:
 
 - normal parameter updates
 - dataset rebuild updates
 - model rebuild updates
 
-This is one of the reasons the pipeline is more interactive than a typical static training script.
-
 ## Main Workflow: `main.py`
 
-The main workflow entry is implemented in [`main.py`](main.py). Its role is to turn a task configuration into an executable training, testing, plotting, or prediction process.
+The main workflow entry is implemented in [`main.py`](main.py). It turns a configured task into a training, testing, plotting, or prediction run.
 
-### Main `main.py` entry points
+### Main entry points
 
 ```bash
 python main.py -g
@@ -196,40 +97,32 @@ python main.py -P 0.50
 python main.py -P 0.45 0.60
 ```
 
-Their roles are:
+Roles:
 
-- `-g`: interactively define the initial run behavior and generate a reusable execution script
+- `-g`: interactively set the initial run behavior and generate a reusable execution script
 - `-t`: test one or more trained configs
 - `-p`: plot test results
-- `-P`: run prediction with optional threshold values
+- `-P`: run prediction with optional thresholds
 
 ### What `main.py` controls
 
-`main.py` does not define the model family or the dataset schema. Instead, it controls how a configured task is started.
+In generation mode, `main.py` configures:
 
-In generation mode, it asks whether to:
-
-- choose a device index
-- print detailed device information
-- check dataloaders before training
-- generate a model summary
-- revise accuracy before continuing
-- load saved weights
-- allow unmatched weight loading
-- load checkpoints strictly
-- record per-epoch logs
-- enable dynamic training updates
-- run final testing
-- run result analysis
-
-This means:
-
-- `config.py` defines the task
-- `main.py` defines the execution behavior of that task
+- device index
+- device information verbosity
+- dataloader checking
+- model summary generation
+- saved-weight loading
+- unmatched-weight loading
+- checkpoint loading strictness
+- epoch logging
+- dynamic training updates
+- final testing
+- result analysis
 
 ### Workflow stages
 
-The actual runtime stages are assembled in [`workflow.py`](workflow.py):
+The runtime stages are assembled in [`workflow.py`](workflow.py):
 
 1. `Init Config`
 2. `Set Device`
@@ -241,101 +134,84 @@ The actual runtime stages are assembled in [`workflow.py`](workflow.py):
 8. `Analyze Results`
 9. `Model Prediction`
 
-These stages connect the core files of the repository:
+Related core files:
 
 - data loading and augmentation: [`augment.py`](augment.py)
 - training and validation: [`train.py`](train.py)
-- test-time metrics and ROC export: [`test.py`](test.py)
-- threshold-based prediction export: [`pred.py`](pred.py)
-- plotting and post-test visualization: [`plot.py`](plot.py)
-- builders, checkpoints, and logging: [`utils.py`](utils.py)
+- testing and ROC export: [`test.py`](test.py)
+- prediction: [`pred.py`](pred.py)
+- plotting: [`plot.py`](plot.py)
+- builders, checkpoints, logging: [`utils.py`](utils.py)
 
-### Input modes
+### Input and output
 
-The workflow supports two main input modes:
+Input modes:
 
-- directory mode, where positive and negative samples are provided as folders
-- `CSV` mode, where the sample list and labels are defined in a table
+- directory mode for positive and negative sample folders
+- `CSV` mode for indexed sample lists
 
-Supported formats are:
+Supported formats:
 
 - `FITS`
 - `PNG`
 
-The final tensor behavior is mainly controlled by:
-
-- `data.input_channels`
-- `data.image_size`
-- `data.augment_mode`
-- `data.adaptation_mode`
-- `data.norm`
-
-### Output artifacts
-
-The workflow writes artifacts to the configured output directories, typically including:
+Common outputs:
 
 - model weights
 - checkpoints
 - epoch logs
 - test logs
-- probability CSV files
-- ROC CSV files
+- probability and ROC CSV files
 - plotted figures
-- prediction output folders split by threshold result
+- threshold-split prediction folders
 
-### Recommended user flow
-
-For a normal task, the recommended order is:
+### Recommended usage flow
 
 1. create or repair a config with `config.py`
-2. edit the config so `path`, `data`, `train`, and `model` match the target task
-3. use `main.py` to define the run behavior
+2. edit `path`, `data`, `train`, and `model`
+3. use `main.py` to define run behavior
 4. train the model
-5. test, plot, or predict through the provided workflow entry points
+5. test, plot, or predict with the workflow entry points
 
 ## DemiLensNet and the Model Library
 
 ### DemiLensNet
 
-The implementation of the model is in [`model/DemiLensNet.py`](model/DemiLensNet.py).
+The implementation is in [`model/DemiLensNet.py`](model/DemiLensNet.py).
 
-`DemiLensNet` is the dedicated gravitational lens classification model in this repository. It is designed for astronomical image recognition scenarios where the target signal can be weak, morphologically subtle, and distributed across multiple spatial scales.
+`DemiLensNet` is the dedicated gravitational lens classification model in this repository. It combines convolutional feature extraction with attention-driven refinement for weak, morphology-sensitive astronomical signals across multiple spatial scales.
 
-At a high level, the model combines convolutional feature extraction with attention-driven feature refinement. In practical terms, its design emphasizes:
+Key characteristics:
 
-- stable local texture modeling through convolutional blocks
-- multi-scale structure capture through dilation and hierarchical feature expansion
-- attention-based refinement in deeper feature stages
-- deformable attention-style spatial masking for morphology-sensitive regions
-- compatibility with both single-band and multi-band inputs
+- convolutional local feature modeling
+- multi-scale structure capture through dilation and hierarchical expansion
+- attention-based deep feature refinement
+- deformable attention-style spatial masking
+- support for single-band and multi-band inputs
 
-The model is intended as a task-oriented astronomical classifier rather than a generic off-the-shelf vision backbone.
+### Main parameters
 
-### DemiLensNet Parameters
+The main `DemiLensNet` parameters exposed through `model_params` are:
 
-The main `DemiLensNet`-family parameters exposed through `model_params` are:
+- `in_ch`
+- `out_ch`
+- `dim`
+- `ori_h`
+- `extra_fc`
+- `e_factor`
+- `ablated`
+- `visualize`
 
-- `in_ch`: input channel count
-- `out_ch`: output channel count, typically `1` for binary classification
-- `dim`: base feature width
-- `ori_h`: reference spatial size used by the model
-- `extra_fc`: whether to use the extra fully connected head
-- `e_factor`: hierarchical feature expansion factors
-- `ablated`: switches for ablation variants
-- `visualize`: whether to export internal visualization outputs
+Typical adaptation rules:
 
-In practice:
+- change `in_ch` for single-band or multi-band data
+- keep `ori_h` aligned with `data.image_size`
+- scale `dim` and `e_factor` for model capacity
+- use `ablated` for controlled ablation variants
 
-- change `in_ch` when moving between single-band and multi-band data
-- keep `ori_h` consistent with `data.image_size`
-- scale `dim` and `e_factor` when changing model capacity
-- use `ablated` only when intentionally running architecture ablations
+### Model library in `config.py`
 
-### Model Library Exposed by `config.py`
-
-The model registry is defined in [`config.py`](config.py).
-
-#### Project-specific models
+Project-specific models:
 
 - `demilensnet`
 - `demilensnetdev`
@@ -353,45 +229,22 @@ The model registry is defined in [`config.py`](config.py).
 - `swin_mlp`
 - `swin_transformer_moe`
 
-#### TorchVision backbones
+TorchVision backbones:
 
-- `resnet18`
-- `resnet34`
-- `resnet50`
-- `resnet101`
-- `resnet152`
-- `resnext50_32x4d`
-- `resnext101_32x8d`
-- `wide_resnet50_2`
-- `wide_resnet101_2`
-- `vgg16`
-- `vgg19`
-- `densenet121`
-- `densenet161`
-- `densenet169`
-- `densenet201`
-- `mobilenet_v2`
-- `mobilenetv2`
-- `mnasnet0_5`
-- `mnasnet0_75`
-- `mnasnet1_0`
-- `mnasnet1_3`
-- `shufflenet_v2_x0_5`
-- `shufflenet_v2_x1_0`
-- `shufflenet_v2_x1_5`
-- `shufflenet_v2_x2_0`
-- `squeezenet1_0`
-- `squeezenet1_1`
-- `alexnet`
-- `googlenet`
-- `inception_v3`
-- `inceptionv3`
+- `resnet18`, `resnet34`, `resnet50`, `resnet101`, `resnet152`
+- `resnext50_32x4d`, `resnext101_32x8d`
+- `wide_resnet50_2`, `wide_resnet101_2`
+- `vgg16`, `vgg19`
+- `densenet121`, `densenet161`, `densenet169`, `densenet201`
+- `mobilenet_v2`, `mobilenetv2`
+- `mnasnet0_5`, `mnasnet0_75`, `mnasnet1_0`, `mnasnet1_3`
+- `shufflenet_v2_x0_5`, `shufflenet_v2_x1_0`, `shufflenet_v2_x1_5`, `shufflenet_v2_x2_0`
+- `squeezenet1_0`, `squeezenet1_1`
+- `alexnet`, `googlenet`, `inception_v3`, `inceptionv3`
 
-### Preset Model Parameter Templates
+### Preset model parameter templates
 
-Besides the model registry, `config.py` also exposes a preset template library through `MODEL_PARAMS_MAP`.
-
-Templates are currently provided for:
+`MODEL_PARAMS_MAP` currently provides templates for:
 
 - `vit`
 - `swintransformerv2`
@@ -405,26 +258,12 @@ Templates are currently provided for:
 - `clftswintransformer`
 - `cswin`
 
-These templates do not replace task-specific configuration. They provide a model-shaped starting point that is injected into a new config when `python config.py -g` is used.
+These templates provide the starting parameter block used by `python config.py -g`.
 
-### Common Parameter Patterns Across the Model Library
+### Paper
 
-Although different models expose different constructor signatures, the library broadly follows a few parameter families:
+- [DemiLensNet](https://example.com/demilensnet-paper)
 
-- convolutional astronomy models such as `demilensnet` and `clftnet` usually use `in_ch`, `out_ch`, `dim`, `ori_h`, `extra_fc`, and `e_factor`
-- transformer-style models usually use `img_size`, `patch_size`, `embed_dim`, `depths`, `num_heads`, `window_size`, and related drop-rate settings
-- custom ResNet-based entries usually expose `in_chans` and architecture-specific flags such as `use_extra_layers`
+### License
 
-This means that, in most cases, adapting a model to a new astronomical classification task is mainly about keeping the channel count, image size, and model family parameters consistent with the data definition in the config.
-
-### Paper Placeholder
-
-The paper link for `DemiLensNet` is intentionally left as a placeholder until a public manuscript or project page is available:
-
-- [DemiLensNet Paper Placeholder](https://example.com/demilensnet-paper)
-
-### MIT License Statement
-
-This project is intended to follow the MIT License. A separate root `LICENSE` file is not created here, but the code already includes MIT-style licensing language.
-
-In practical terms, the MIT license allows users to use, copy, modify, merge, publish, distribute, sublicense, and sell the software, provided that the copyright notice and permission notice are retained. The software is provided as-is, without warranty.
+This project uses the MIT License.
