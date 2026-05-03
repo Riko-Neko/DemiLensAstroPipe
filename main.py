@@ -4,7 +4,7 @@ import sys
 
 from workflow import create_workflow
 
-__version__ = "1.0"
+__version__ = "1.0.1"
 
 
 def print_info():

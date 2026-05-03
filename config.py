@@ -1021,8 +1021,8 @@ class Mapping:
                 'train_csv': None, 'pos_dir_test': ['./data/test/positives/3band'],
                 'neg_dir_test': ['./data/test/negatives/3band'], 'test_csv': None,
                 'data_dir_pred': ['./data/test/test_real'], 'pred_csv': None, 'pred_output_dir': './result/pred',
-                'test_output_dir': './result/csv', 'plot_output_dir': './result/fig', 'weights_dir': './weights',
-                'checkpoint_dir': './checkpoints', 'log_dir': './logs'
+                'pred_output_type': 'file', 'test_output_dir': './result/csv', 'plot_output_dir': './result/fig',
+                'weights_dir': './weights', 'checkpoint_dir': './checkpoints', 'log_dir': './logs'
             },
             'data': {
                 'input_channels': 3, 'image_size': 96, 'num_workers': 10, 'num_samples': None, 'num_val_samples': 8000,

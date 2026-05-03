@@ -5,17 +5,18 @@ flags:
   params_update: false
 path:
   config_dir: ./config
-  data_dir_train: [/data/ssd0/lirui/lens_search/lens_sim/lens_sim_realgal_poisson/simulation/multibands/sys/, /data/ssd0/lirui/KIDS/galaxy_neg/multibands/]
-  data_dir_test: [/data/ssd0/lirui/lens_search/lens_sim/lens_sim_realgal_poisson/simulation/multibands/sys/, /data/ssd0/lirui/KIDS/galaxy_neg/multibands/]
-  pos_dir_train: null
-  neg_dir_train: null
-  train_csv: ./data/train.csv
-  pos_dir_test: null
-  neg_dir_test: null
-  test_csv: ./data/test.csv
-  data_dir_pred: null
-  pred_csv: ./data/pred.csv
-  pred_output_dir: null
+  data_dir_train: null
+  data_dir_test: null
+  pos_dir_train: [./data/train/positives/3band]
+  neg_dir_train: [./data/train/negatives/neg/3band, ./data/train/negatives/LRGs/3band]
+  train_csv: null
+  pos_dir_test: [./data/test/positives/3band]
+  neg_dir_test: [./data/test/negatives/3band]
+  test_csv: null
+  data_dir_pred: [./data/test/test_real]
+  pred_csv: null
+  pred_output_dir: ./result/pred
+  pred_output_type: file
   test_output_dir: ./result/csv
   plot_output_dir: ./result/fig
   weights_dir: ./weights
@@ -26,7 +27,7 @@ data:
   image_size: 96
   num_workers: 10
   num_samples: null
-  num_val_samples: 40000
+  num_val_samples: 8000
   augment_mode: full
   color_jitter: false
   add_noise: false
