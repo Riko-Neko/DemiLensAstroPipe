@@ -28,6 +28,7 @@ data:
   num_workers: 10
   num_samples: null
   num_val_samples: 8000
+  train_pos_label: 1.0
   augment_mode: full
   color_jitter: false
   add_noise: false

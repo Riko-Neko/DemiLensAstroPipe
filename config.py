@@ -745,6 +745,7 @@ class Mapping:
         'data.num_workers': 'normal',
         'data.num_samples': 'normal',
         'data.num_val_samples': 'normal',
+        'data.train_pos_label': 'normal',
         'data.augment': 'normal',
         'data.color_jitter': 'normal',
         'data.add_noise': 'normal',
@@ -1026,9 +1027,10 @@ class Mapping:
             },
             'data': {
                 'input_channels': 3, 'image_size': 96, 'num_workers': 10, 'num_samples': None, 'num_val_samples': 8000,
-                'augment_mode': 'full', 'color_jitter': False, 'add_noise': False, 'adaptation_mode': 'padding',
-                'channel_expansion_mode': None, 'mix_channels': False, 'csv_samples_catalog_reader': 'sample',
-                'norm': False, 'update_mean_std': False, 'mean': None, 'std': None
+                'train_pos_label': 1.0, 'augment_mode': 'full', 'color_jitter': False, 'add_noise': False,
+                'adaptation_mode': 'padding', 'channel_expansion_mode': None, 'mix_channels': False,
+                'csv_samples_catalog_reader': 'sample', 'norm': False, 'update_mean_std': False, 'mean': None,
+                'std': None
             },
             'train': {
                 'optimizer': 'AdamW', 'loss_function': 'BCEWithLogitsLoss',

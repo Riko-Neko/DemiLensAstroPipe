@@ -223,6 +223,7 @@ class BuilderManager:
         self.update_mean_std = self.config['data']['update_mean_std']
         self.mean = self.config['data']['mean']
         self.std = self.config['data']['std']
+        self.train_pos_label = self.config['data']
         self.model_config = self.config['model']
         self.batch_size = self.config['train']['batch_size']
         self.learning_rate = self.config['train']['learning_rate']
@@ -258,6 +259,7 @@ class BuilderManager:
                                adaptation_mode=self.adaptation_mode, channel_expansion_mode=self.channel_expansion_mode,
                                mix_channels=self.mix_channels,
                                csv_samples_catalog_reader=self.csv_samples_catalog_reader, predicting_mode=pred_mode,
+                               pos_label=self.train_pos_label if not hide_main else 1.0,
                                norm=self.norm, update_mean_std=self.update_mean_std, mean=self.mean, std=self.std)
         if hide_main:
             stdout_controller.stdout_re()

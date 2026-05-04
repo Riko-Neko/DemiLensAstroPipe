@@ -20,7 +20,7 @@ class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, img_size=None, data_dir=None, csv_file=None, pos_dir=None, neg_dir=None, num=None,
                  augment_mode=None, color_jitter=False, add_noise=False, adaptation_mode='padding',
                  channel_expansion_mode=None, mix_channels=False, csv_samples_catalog_reader=None,
-                 predicting_mode=False, **norm_kwargs):
+                 predicting_mode=False, pos_label=1.0, **norm_kwargs):
         self.img_size = img_size
         self.data_dir = data_dir
         self.csv_file = csv_file
@@ -42,6 +42,7 @@ class ImageDataset(torch.utils.data.Dataset):
         self.std = norm_kwargs.get('std', [0.229, 0.224, 0.225])
         self.samples_catalog_reader = csv_samples_catalog_reader
         self.predicting_mode = predicting_mode
+        self.pos_label = float(pos_label)
 
         # Load file paths for positive and negative samples using csv file or existing directory, or file for predicting
         if self.pos_dir is None and self.neg_dir is None and self.predicting_mode is not True and self.csv_file is None:
@@ -168,7 +169,7 @@ class ImageDataset(torch.utils.data.Dataset):
                 label = self.csv_data_labels[index]
             elif index < len(self.positives):
                 path = self.positives[index]
-                label = 1
+                label = self.pos_label
             else:
                 path = self.negatives[index - len(self.positives)]
                 label = 0

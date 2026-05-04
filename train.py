@@ -99,8 +99,9 @@ def evaluate(model, dataloader, criterion, dynamic_auc = False, process_bar = No
 
             probs = torch.sigmoid(outputs)
             predicted = (probs >= 0.5).float()
+            target_labels = (labels >= 0.5).float()
             total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            correct += (predicted == target_labels).sum().item()
 
             if dynamic_auc:
                 evaluate_process_bar.set_description(
