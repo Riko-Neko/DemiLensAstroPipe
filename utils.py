@@ -126,7 +126,7 @@ class CheckpointManager:
                 model.load_state_dict(checkpoint['model_state_dict'], strict=strict_load)
             elif last_epoch >= 3:
                 print(
-                    f'\033[93m[Warning]\033[0m Using custom weights instead of checkpoint weights may lead to instability in training. Use last saved best weights if still doing so.')
+                    f'[\033[93mWarning\033[0m] Using custom weights instead of checkpoint weights may lead to instability in training. Use last saved best weights if still doing so.')
             if optimizer:
                 if strict_load:
                     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -178,12 +178,12 @@ class CheckpointManager:
             param_groups_mismatch = old_param_groups_cnt != new_param_groups_cnt
 
             if missing_state_keys:
-                print(f'\033[93m[Warning]\033[0m Missing optimizer state keys: {missing_state_keys}')
+                print(f'[\033[93mWarning\033[0m] Missing optimizer state keys: {missing_state_keys}')
             if unexpected_state_keys:
-                print(f'\033[93m[Warning]\033[0m Unexpected optimizer state keys: {unexpected_state_keys}')
+                print(f'[\033[93mWarning\033[0m] Unexpected optimizer state keys: {unexpected_state_keys}')
             if param_groups_mismatch:
                 print(
-                    f'\033[93m[Warning]\033[0m Param groups count mismatch. Checkpoint has {old_param_groups_cnt}, current has {new_param_groups_cnt}. Using current structure.')
+                    f'[\033[93mWarning\033[0m] Param groups count mismatch. Checkpoint has {old_param_groups_cnt}, current has {new_param_groups_cnt}. Using current structure.')
 
         optimizer.load_state_dict(new_state_dict)
 
@@ -223,7 +223,7 @@ class BuilderManager:
         self.update_mean_std = self.config['data']['update_mean_std']
         self.mean = self.config['data']['mean']
         self.std = self.config['data']['std']
-        self.train_pos_label = self.config['data']
+        self.train_pos_label = self.config['data']['train_pos_label']
         self.model_config = self.config['model']
         self.batch_size = self.config['train']['batch_size']
         self.learning_rate = self.config['train']['learning_rate']
@@ -259,8 +259,8 @@ class BuilderManager:
                                adaptation_mode=self.adaptation_mode, channel_expansion_mode=self.channel_expansion_mode,
                                mix_channels=self.mix_channels,
                                csv_samples_catalog_reader=self.csv_samples_catalog_reader, predicting_mode=pred_mode,
-                               pos_label=self.train_pos_label if not hide_main else 1.0,
-                               norm=self.norm, update_mean_std=self.update_mean_std, mean=self.mean, std=self.std)
+                               pos_label=self.train_pos_label, norm=self.norm, update_mean_std=self.update_mean_std,
+                               mean=self.mean, std=self.std)
         if hide_main:
             stdout_controller.stdout_re()
         if test_mode:

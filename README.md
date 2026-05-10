@@ -1,4 +1,4 @@
-# Astronomical FITS/PNG Classification Pipeline
+# DemiAstro: Astronomical FITS/PNG Classification Pipeline
 
 A user-oriented, highly interactive PyTorch deep learning pipeline based on `YAML` configuration. With preset astronomy-optimized models, it can be adapted to `FITS`/`PNG` classification tasks on task-specific data. In this repository, gravitational lens binary classification with `DemiLensNet` is the concrete task adaptation.
 

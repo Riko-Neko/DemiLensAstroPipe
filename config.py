@@ -73,6 +73,13 @@ class ModelSettings:
                 for i, name in zip(device_index, device_name):
                     cls.check_gpu_memory(i, name)
 
+        elif torch.mps.is_available():
+            device = [torch.device("mps")]
+            if verbose:
+                print(f"Running on Apple Silicon")
+            if info_verbose:
+                cls.print_mps()
+
         else:
             device = [torch.device("cpu")]
             if verbose:
@@ -119,6 +126,19 @@ class ModelSettings:
         table_data = [[cpu_info, cpu_count, cpu_architecture]]
 
         print("\033[94m-- CPU Info --\033[0m")
+        print(tabulate(table_data, headers=headers, tablefmt="rounded_grid"))
+
+    @staticmethod
+    def print_mps():
+        apple_info = subprocess.check_output(["system_profiler", "SPHardwareDataType"], text=True)
+        chip = re.search(r"^\s*Chip:\s*(.+)$", apple_info, re.MULTILINE).group(1)
+        core_info = re.search(r"^\s*Total Number of Cores:\s*(.+)$", apple_info, re.MULTILINE).group(1)
+        memory = re.search(r"^\s*Memory:\s*(.+)$", apple_info, re.MULTILINE).group(1)
+
+        headers = ["Processor", "Number of Cores", "Memory"]
+        table_data = [[chip, core_info, memory]]
+
+        print("\033[94m-- MPS Info --\033[0m")
         print(tabulate(table_data, headers=headers, tablefmt="rounded_grid"))
 
     @classmethod

@@ -4,6 +4,7 @@ import hashlib
 import math
 import os
 import sys
+from functools import partial
 
 import numpy as np
 import torch
@@ -109,9 +110,15 @@ class ImageDataset(torch.utils.data.Dataset):
                                                 padding_mode='reflect') if self.img_size is not None else None,
                                   v2.RandomHorizontalFlip(),
                                   v2.RandomVerticalFlip(),
-                                  v2.RandomRotation(180),
-                                  v2.RandomRotation(90),
-                                  v2.RandomGrayscale(0.05),
+                                  v2.RandomChoice([v2.Identity(),
+                                                   v2.Lambda(partial(torch.rot90, k=2, dims=(-2, -1))), ]),
+                                  v2.RandomChoice([v2.Identity(),
+                                                   v2.Lambda(partial(torch.rot90, k=1, dims=(-2, -1))),
+                                                   v2.Lambda(partial(torch.rot90, k=2, dims=(-2, -1))),
+                                                   v2.Lambda(partial(torch.rot90, k=3, dims=(-2, -1))), ]),
+                                  # v2.RandomRotation(180), # Introduce pixel change!
+                                  # v2.RandomRotation(90),
+                                  # v2.RandomGrayscale(0.05),
                                   ]
 
         augmentation_list_astro = [AugmentationLib.RandomEllipticalDistortion(max_scale=0.05),
@@ -271,10 +278,6 @@ class ImageDataset(torch.utils.data.Dataset):
                 continue  # skip different shape
 
             band_data = self.pixel_filter(data)
-
-            if len(bands) == 1:
-                band_data = np.sqrt(band_data)
-
             if band_data.dtype.byteorder != '=':
                 band_data = band_data.byteswap().view(band_data.dtype.newbyteorder('='))
 
@@ -282,6 +285,9 @@ class ImageDataset(torch.utils.data.Dataset):
 
         if not bands:
             return None
+
+        if len(bands) == 1:
+            bands[0] = torch.sqrt(bands[0])
 
         combined_tensor = torch.cat(bands)
         max_value = 1e-13 if (max_value := torch.max(combined_tensor)).item() == 0 else max_value
@@ -333,7 +339,7 @@ class ImageDataset(torch.utils.data.Dataset):
         try:
             dataset = ImageDataset(self.img_size, self.data_dir, self.csv_file, self.pos_dir, self.neg_dir, num, None,
                                    False, False, self.adaptation_mode, self.channel_expansion_mode, self.mix_channels,
-                                   self.samples_catalog_reader, pred, norm=self.norm, update_mean_std=False,
+                                   self.samples_catalog_reader, pred, 1.0, norm=self.norm, update_mean_std=False,
                                    mean=self.mean, std=self.std)
         finally:
             if hide_process:
@@ -628,7 +634,7 @@ class DatasetToolkit:
             batch_info += f"Labels shape: {labels.size()}, dtype: {labels.dtype}\n"
 
             for label in labels:
-                if label.item() == 1:
+                if label.item() > 0.5:
                     count_label_1 += 1
                 total_samples += 1
 
@@ -745,7 +751,7 @@ class DatasetToolkit:
                                 break
                     if len(names_dict[sample]) < freq_actual:
                         print(
-                            f"\033[93mWarning: Insufficient matches for sample '{sample}'. Only {len(names_dict[sample])} found.\033[0m")
+                            f"[\033[93mWarning: Insufficient matches for sample '{sample}'. Only {len(names_dict[sample])} found.\033[0m")
                 except KeyError:
                     print(f"\033[91mThe sample '{sample}' does not exist in the dictionary.\033[0m")
                 except ValueError as ve:
