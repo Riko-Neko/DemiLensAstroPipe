@@ -50,11 +50,18 @@ class ImageDataset(torch.utils.data.Dataset):
             raise ValueError(
                 "Paths for samples are undefined. If you want to perform inference, please check if parameter 'predicting_mode' is set to True. Or if you want to use csv index file, please provide it in 'csv_file' parameter.")
         if predicting_mode is True:
-            if self.csv_file is not None or self.pos_dir is not None or self.neg_dir is not None:
-                print(
-                    "[\033[93mWarning\033[0m] predicting_mode is set to True. pos_dir, neg_dir, and csv_file will be ignored.")
+            if self.pos_dir is not None or self.neg_dir is not None:
+                print("[\033[93mWarning\033[0m] predicting_mode is set to True. pos_dir and neg_dir will be ignored.")
             self.augment_mode, self.mix_channels, self.update_mean_std = None, False, False
-            self.inference = self.get_path(self.data_dir)
+            if self.csv_file is not None:
+                if self.data_dir is not None and input(
+                        f"[\033[93mWarning\033[0m] both current data directory:\n{self.data_dir}\nand pred csv:\n{self.csv_file}\nUse pred csv for inference?(y/n)").lower() == 'n':
+                    self.inference = self.get_path(self.data_dir)
+                else:
+                    self.csv_data, _ = self.load_csv(self.csv_file, self.samples_catalog_reader)
+                    self.inference = self.get_csv_data(self.csv_data, 'name')
+            else:
+                self.inference = self.get_path(self.data_dir)
         elif self.csv_file is not None:
             if self.pos_dir is not None or self.neg_dir is not None:
                 print("[\033[93mWarning\033[0m] csv_file is provided. pos_dir and neg_dir will be ignored.")
@@ -68,7 +75,8 @@ class ImageDataset(torch.utils.data.Dataset):
                 if input(
                         f"[\033[93mWarning\033[0m] current data directory:\n{self.csv_data_dir}\nwhich have \033[93minsufficient\033[0m samples.\nStill proceed?(y/n)").lower() == 'n':
                     sys.exit("\033[91mAborted.\033[0m")
-            self.csv_data_names, self.csv_data_labels = self.csv_data['name'], self.csv_data['label']
+            self.csv_data_names = self.get_csv_data(self.csv_data, 'name')
+            self.csv_data_labels = self.get_csv_data(self.csv_data, 'label')
             self.csv_data_samples = self.csv_data[self.samples_catalog_reader] if samples_catalog is not [] else []
         elif self.pos_dir is None:
             print("[\033[93mWarning\033[0m] pos_dir is None. Without positive samples might lead to poor performance.")
@@ -251,6 +259,17 @@ class ImageDataset(torch.utils.data.Dataset):
         if 'label' in data:
             data['label'] = [int(label) for label in data['label']]
         return data, list(samples)
+
+    @staticmethod
+    def get_csv_data(csv_data, mode):
+        keys = {
+            'name': ('name', 'id', 'names', 'ids', 'filename', 'file', 'file_name', 'title', 'titles', 'subject',
+                     'subjects', 'key', 'keys', 'identifier', 'identifiers', 'entry', 'entries'),
+            'label': ('label', 'class', 'target', 'labels', 'classes', 'targets', 'category', 'categories', 'type',
+                      'types', 'group', 'groups', 'tag', 'tags', 'outcome', 'outcomes', 'status', 'statuses')
+        }[mode]
+        csv_keys_lower = {col.lower(): col for col in csv_data.keys()}
+        return csv_data[csv_keys_lower[next(col for col in keys if col in csv_keys_lower)]]
 
     def load_fits(self, path):
         hdul = fits.open(path)

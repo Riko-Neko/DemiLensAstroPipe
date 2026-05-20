@@ -1,5 +1,6 @@
 import csv
 import math
+import os
 import shutil
 from pathlib import Path
 
@@ -16,18 +17,26 @@ def predict(model, dataloader_predict, threshold=0.5, process_bar=None, label_in
     output_dir = config['path']['pred_output_dir']
     output_type = config['path']['pred_output_type']
 
-    _, path = next(iter(dataloader_predict))
-    data_dir = Path(path[0]).parent
-    data_dir_name = data_dir.name
-    path_default = data_dir.parent
+    all_dirs = set()
+    for batch in dataloader_predict:
+        _, paths = batch
+        for p in paths:
+            all_dirs.add(str(Path(p).parent))
+    all_dirs = list(all_dirs)
+    dirs_to_check = all_dirs[:10]
+    dirs_to_print = dirs_to_check + ["..."] if len(all_dirs) > 10 else all_dirs
+    dirs_str = ", ".join(dirs_to_print)
+    data_dir_name = Path(str(Path(os.path.commonprefix(dirs_to_check)))).name if dirs_to_check else "out"
+    path_default = Path(all_dirs[0]).parent
     output_dir = path_default if output_dir is None else Path(output_dir)
     output_dir = output_dir / f'{name}_{data_dir_name}_pred'
     if output_type == 'csv':
         output_dir = output_dir.with_suffix('.csv')
     elif output_type != 'file':
-        raise ValueError(f"[\033[91mError\033[0m] Unsupported output type: {output_type}. Available types: 'file', 'csv'.")
+        raise ValueError(
+            f"[\033[91mError\033[0m] Unsupported output type: {output_type}. Available types: 'file', 'csv'.")
     print(
-        f"\033[94mPredicting samples in {data_dir} to {output_dir}\033[0m ==> \033[96m{len(dataloader_predict.dataset)} prediction samples\033[0m")
+        f"\033[94mPredicting samples in {dirs_str} to {output_dir}\033[0m ==> \033[96m{len(dataloader_predict.dataset)} prediction samples\033[0m")
 
     predict_process_bar = tqdm(enumerate(dataloader_predict), total=len(dataloader_predict),
                                desc='Predicting: ',
